@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F Company — Automation Command Center</title>
+<style>
+  :root {
+    --bg-primary: #0d1117;
+    --bg-card: #161b22;
+    --bg-card2: #1c2128;
+    --border: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --green: #3fb950;
+    --green-dim: #1a4a2a;
+    --blue: #58a6ff;
+    --blue-dim: #0d2340;
+    --purple: #bc8cff;
+    --purple-dim: #2d1a4a;
+    --yellow: #d29922;
+    --yellow-dim: #3a2600;
+    --red: #f85149;
+    --cyan: #39d0d0;
+    --cyan-dim: #0a2f2f;
+    --orange: #e3b341;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .logo-circle {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, #58a6ff, #bc8cff);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px; color: #fff;
+    box-shadow: 0 0 16px rgba(88,166,255,0.4);
+  }
+  .topbar-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .topbar-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(63,185,80,0.15); border: 1px solid rgba(63,185,80,0.4);
+    border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700;
+    color: var(--green); letter-spacing: 1px;
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.3)} }
+  .topbar-right { display: flex; align-items: center; gap: 20px; }
+  .topbar-time { text-align: right; }
+  .topbar-time .date { font-size: 11px; color: var(--text-secondary); }
+  .topbar-time .time { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ── LAYOUT ── */
+  .main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:1100px){ .kpi-grid{ grid-template-columns: repeat(3,1fr); } }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 12px 12px 0 0;
+  }
+  .kpi-green::before { background: linear-gradient(90deg,var(--green),var(--cyan)); }
+  .kpi-blue::before  { background: linear-gradient(90deg,var(--blue),var(--purple)); }
+  .kpi-yellow::before{ background: linear-gradient(90deg,var(--yellow),var(--orange)); }
+  .kpi-purple::before{ background: linear-gradient(90deg,var(--purple),var(--blue)); }
+  .kpi-cyan::before  { background: linear-gradient(90deg,var(--cyan),var(--green)); }
+  .kpi-label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; }
+  .kpi-value { font-size: 40px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .kpi-green .kpi-value  { color: var(--green); }
+  .kpi-blue .kpi-value   { color: var(--blue); }
+  .kpi-yellow .kpi-value { color: var(--yellow); }
+  .kpi-purple .kpi-value { color: var(--purple); }
+  .kpi-cyan .kpi-value   { color: var(--cyan); }
+  .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+  .kpi-trend { position: absolute; top: 18px; right: 16px; font-size: 11px; font-weight: 700; }
+  .trend-up { color: var(--green); }
+  .trend-stable { color: var(--text-secondary); }
+
+  /* ── 2-COLUMN LAYOUT ── */
+  .content-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+  @media(max-width:1000px){ .content-grid{ grid-template-columns:1fr; } }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 13px; font-weight: 700; letter-spacing: .5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title span { font-size: 16px; }
+  .section-action { font-size: 11px; color: var(--blue); cursor: pointer; }
+
+  /* ── AUTOMATION LIST ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .auto-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .auto-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .status-dot {
+    width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+  }
+  .s-green { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  .s-blue  { background: var(--blue);  box-shadow: 0 0 6px var(--blue); }
+  .s-yellow{ background: var(--yellow);}
+  .s-red   { background: var(--red);   }
+  .auto-info { flex: 1; min-width: 0; }
+  .auto-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .auto-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .auto-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .badge {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    letter-spacing: .5px;
+  }
+  .badge-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .badge-blue  { background: var(--blue-dim);  color: var(--blue);  border: 1px solid rgba(88,166,255,.3); }
+  .badge-yellow{ background: var(--yellow-dim);color: var(--yellow);border: 1px solid rgba(210,153,34,.3); }
+  .badge-purple{ background: var(--purple-dim);color: var(--purple);border: 1px solid rgba(188,140,255,.3); }
+  .badge-cyan  { background: var(--cyan-dim);  color: var(--cyan);  border: 1px solid rgba(57,208,208,.3); }
+  .auto-time { font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── UPTIME BAR ── */
+  .uptime-bar-wrap { margin-top: 8px; }
+  .uptime-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+  .uptime-bar { height: 6px; background: var(--bg-card2); border-radius: 4px; overflow: hidden; }
+  .uptime-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: width 1s ease; }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── PERSONNEL CARD ── */
+  .personnel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .personnel-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .personnel-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; flex-shrink: 0;
+  }
+  .av-blue   { background: linear-gradient(135deg,#1a4a8a,var(--blue)); color: #fff; }
+  .av-purple { background: linear-gradient(135deg,#3a1a6a,var(--purple)); color: #fff; }
+  .av-green  { background: linear-gradient(135deg,var(--green-dim),var(--green)); color: #fff; }
+  .av-cyan   { background: linear-gradient(135deg,var(--cyan-dim),var(--cyan)); color: #fff; }
+  .personnel-info { flex: 1; }
+  .personnel-name { font-size: 13px; font-weight: 700; }
+  .personnel-role { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+  .online-tag {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,.3);
+  }
+  .away-tag {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    background: #2a2200; color: var(--yellow); border: 1px solid rgba(210,153,34,.3);
+  }
+
+  /* ── LAST CHECK CARD ── */
+  .last-check-card {
+    background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(188,140,255,0.08));
+    border: 1px solid rgba(88,166,255,0.25);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .last-check-header { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .check-shield { font-size: 16px; }
+  .check-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .check-key { font-size: 12px; color: var(--text-secondary); }
+  .check-val { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .check-time-big { font-size: 22px; font-weight: 900; color: var(--blue); font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+  .check-elapsed { font-size: 11px; color: var(--green); }
+  .update-btn {
+    margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px;
+    background: rgba(88,166,255,.15); border: 1px solid rgba(88,166,255,.3);
+    color: var(--blue); font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: background .2s;
+  }
+  .update-btn:hover { background: rgba(88,166,255,.25); }
+
+  /* ── SYSTEM HEALTH ── */
+  .health-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .health-row:last-child { border-bottom: none; }
+  .health-name { font-size: 12px; }
+  .health-right { display: flex; align-items: center; gap: 10px; }
+  .health-pct { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mini-bar { width: 60px; height: 4px; background: var(--bg-card2); border-radius: 2px; overflow: hidden; }
+  .mini-fill { height: 100%; border-radius: 2px; background: var(--green); }
+  .mini-fill.warn { background: var(--yellow); }
+
+  /* ── ACTIVITY LOG ── */
+  .log-item {
+    display: flex; gap: 12px; padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .log-time { font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; min-width: 45px; }
+  .log-text { font-size: 12px; color: var(--text-secondary); }
+  .log-text strong { color: var(--text-primary); font-weight: 600; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+  /* GAS メモ編集 */
+  #gasMemo { cursor:text; outline:none; border-bottom:1px dashed var(--border); padding:0 2px; }
+  #gasMemo:focus { border-bottom:1px dashed var(--blue); color:var(--text-primary); }
+  /* 確認者セレクト */
+  #checkerSelect option { background:var(--bg-card2); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-circle">F</div>
+    <div>
+      <div class="topbar-title">F Company — Automation Command Center</div>
+      <div class="topbar-sub">Personal Automation Ops Dashboard / ふるたち の自動化管制塔</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="topbar-time">
+      <div class="date" id="topDate">2026/03/28</div>
+      <div class="time" id="topTime">--:-- JST</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-green">
+      <div class="kpi-trend trend-up">↑ +1 今月</div>
+      <div class="kpi-label">Total Automations</div>
+      <div class="kpi-value">9</div>
+      <div class="kpi-sub">Cowork 8 + GAS 1</div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-trend trend-up">稼働中</div>
+      <div class="kpi-label">Active / Running</div>
+      <div class="kpi-value">8</div>
+      <div class="kpi-sub">全スケジュール稼働中</div>
+    </div>
+    <div class="kpi-card kpi-purple">
+      <div class="kpi-trend trend-stable">稼働率</div>
+      <div class="kpi-label">Uptime Rate</div>
+      <div class="kpi-value" id="uptimePct">98.9<span style="font-size:22px">%</span></div>
+      <div class="kpi-sub">過去30日間</div>
+    </div>
+    <div class="kpi-card kpi-yellow">
+      <div class="kpi-trend trend-stable">要対応</div>
+      <div class="kpi-label">要確認 / Manual</div>
+      <div class="kpi-value">1</div>
+      <div class="kpi-sub">GAS（手動トリガー未設定）</div>
+    </div>
+    <div class="kpi-card kpi-cyan">
+      <div class="kpi-trend trend-up">↑ 今週</div>
+      <div class="kpi-label">Tasks Executed Today</div>
+      <div class="kpi-value" id="execCount">24</div>
+      <div class="kpi-sub">自動実行済みタスク</div>
+    </div>
+  </div>
+
+  <!-- UPTIME BAR -->
+  <div class="card" style="margin-bottom:16px;padding:14px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="section-title"><span>🍊</span> 30日間 稼働履歴</div>
+      <div style="font-size:11px;color:var(--green);font-weight:700;">● すべてのシステム正常稼働中</div>
+    </div>
+    <div class="uptime-bar-wrap">
+      <div class="uptime-label"><span>稼働率</span><span id="uptimeVal">98.9%</span></div>
+      <div class="uptime-bar"><div class="uptime-fill" id="uptimeFill" style="width:98.9%"></div></div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <!-- LEFT: AUTOMATION REGISTRY -->
+    <div>
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title"><span>🤖</span> Automation Registry</div>
+          <div class="section-action">全タスク一覧</div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-green"></div>
+          <div class="auto-info">
+            <div class="auto-name">🔬 Fast Research（電験3種）</div>
+            <div class="auto-desc">NotebookLMで自動リサーチ → Notionに保存</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">05:30</div>
+            <span class="badge badge-green">毎日</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-green"></div>
+          <div class="auto-info">
+            <div class="auto-name">📰 朝刊ブリーフィング</div>
+            <div class="auto-desc">3カテゴリニュース + YouTube要約 → Notion</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">06:00</div>
+            <span class="badge badge-green">毎日</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-green"></div>
+          <div class="auto-info">
+            <div class="auto-name">⚾ イチロー学習コーチ</div>
+            <div class="auto-desc">朝分析 + 今日やるべき問題リスト生成</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">06:30</div>
+            <span class="badge badge-green">毎日</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-green"></div>
+          <div class="auto-info">
+            <div class="auto-name">🌙 夕方学習レビュー</div>
+            <div class="auto-desc">その日の学習進捗をまとゆてNotionへ</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">21:00</div>
+            <span class="badge badge-green">毎日</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-blue"></div>
+          <div class="auto-info">
+            <div class="auto-name">📋 週次ダイジェスト（金曜）</div>
+            <div class="auto-desc">週間まとめ → Gmail + Notion に配信</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">金 20:00</div>
+            <span class="badge badge-blue">週次</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-blue"></div>
+          <div class="auto-info">
+            <div class="auto-name">📅 週次スケジュール生成</div>
+            <div class="auto-desc">Gcalイベント解析 → 翌週プランを自動作成</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">日 09:00</div>
+            <span class="badge badge-blue">週次</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-blue"></div>
+          <div class="auto-info">
+            <div class="auto-name">📊 週次学習サマリー</div>
+            <div class="auto-desc">Notion学習ログ集計 → レポート生成</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">日 08:00</div>
+            <span class="badge badge-blue">週次</span>
+          </div>
+        </div>
+
+        <div class="auto-item">
+          <div class="status-dot s-blue"></div>
+          <div class="auto-info">
+            <div class="auto-name">📆 月次レビュー</div>
+            <div class="auto-desc">月間KPI集計 → Notionダッシュボード更新</div>
+          </div>
+          <div class="auto-meta">
+            <div class="auto-time">月末</div>
+            <span class="badge badge-purple">月次</span>
+          </div>
+        </div>
+
+        <div class="auto-item" id="gasItem" style="flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;width:100%;">
+            <div class="status-dot s-yellow" style="margin-top:5px;"></div>
+            <div class="auto-info">
+              <div class="auto-name">⚙️ GAS カスタムスクリプト</div>
+              <div class="auto-desc">Google Apps Script（手動トリガー設定待ち）</div>
+            </div>
+            <div class="auto-meta">
+              <div class="auto-time">—</div>
+              <span class="badge badge-yellow">要確認</span>
+            </div>
+          </div>
+          <!-- ひろゆき提案: 対応期限・担当者メモ -->
+          <div style="width:100%;margin-left:21px;padding:8px 10px;background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.25);border-radius:8px;display:flex;gap:16px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;color:var(--text-secondary);">対応期限</span>
+              <span style="font-size:12px;font-weight:700;color:var(--yellow);" id="gasDeadline">2026/04/04</span>
+              <span id="gasDeadlineLeft" style="font-size:10px;color:var(--text-secondary);"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;color:var(--text-secondary);">担当</span>
+              <span style="font-size:12px;font-weight:700;color:var(--blue);">ひろゆき</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex:1;">
+              <span style="font-size:10px;color:var(--text-secondary);">メモ</span>
+              <span id="gasMemo" style="font-size:11px;color:var(--text-primary);" contenteditable="true"
+                title="クリックして編集"
+                style="cursor:text;outline:none;border-bottom:1px dashed var(--border);">トリガー種別を時間主導型に変更予定</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY LOG -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title"><span>📜</span> 最近のアクヅィビヅィログ</div>
+        </div>
+        <div id="activityLogContainer">
+        <div class="log-item">
+          <div class="log-dot" style="background:var(--green)"></div>
+          <div class="log-time" id="log1time">--:--</div>
+          <div class="log-text"><strong>朝刊ブリーフィング</strong> 実行完了 — Notionに3記事保存</div>
+        </div>
+        <div class="log-item">
+          <div class="log-dot" style="background:var(--green)"></div>
+          <div class="log-time" id="log2time">--:--</div>
+          <div class="log-text"><strong>Fast Research</strong> 実行完了 — 電験3種 5問分析</div>
+        </div>
+        <div class="log-item">
+          <div class="log-dot" style="background:var(--blue)"></div>
+          <div class="log-time" id="log3time">--:--</div>
+          <div class="log-text"><strong>イチロー学習コーチ</strong> 完了 — 今日のタスグ12件生成</div>
+        </div>
+        <div class="log-item">
+          <div class="log-dot" style="background:var(--purple)"></div>
+          <div class="log-time">昨日</div>
+          <div class="log-text"><strong>週次ダイジェスト</strong> 配信完了 — Gmail送信 + Notion更新</div>
+        </div>
+        <div class="log-item">
+          <div class="log-dot" style="background:var(--yellow)"></div>
+          <div class="log-time">3日前</div>
+          <div class="log-text"><strong>GAS スクリプト</strong> — 手動トリガー設定を確認中</div>
+        </div>
+        </div><!-- /activityLogContainer -->
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- LAST CHECK CARD (目立つ！) -->
+      <div class="last-check-card" id="lastCheckCard">
+        <div class="last-check-header">
+          <span class="check-shield">🛡️</span> 最終確認情報
+        </div>
+        <div class="check-row">
+          <span class="check-key">最終確認者</span>
+          <span class="check-val" style="color:var(--blue);font-size:16px;" id="lastChecker">ひろゆき</span>
+        </div>
+        <div style="margin: 6px 0 4px;">
+          <div class="check-key" style="margin-bottom:4px;">最終確認時刻</div>
+          <div class="check-time-big" id="lastCheckTime">--:--:--</div>
+          <div class="check-elapsed" id="lastCheckElapsed">● システム正常確認済み</div>
+        </div>
+        <div class="check-row" style="margin-top:6px;">
+          <span class="check-key">確認ステータス</span>
+          <span style="font-size:11px;font-weight:700;color:var(--green);" id="checkStatus">✔ ALL CLEAR</span>
+        </div>
+        <!-- ひろゆき提案: 確認者を選んでからボタン押下 -->
+        <div style="display:flex;gap:6px;margin-top:12px;align-items:center;">
+          <select id="checkerSelect" style="flex:1;padding:7px 8px;border-radius:8px;background:var(--bg-card2);border:1px solid var(--border);color:var(--text-primary);font-size:12px;font-weight:700;">
+            <option value="ひろゆき">ひろゆき</option>
+            <option value="ふるたち">ふるたち</option>
+            <option value="Claude Agent">Claude Agent</option>
+          </select>
+          <button class="update-btn" style="margin-top:0;flex:1.5;" onclick="updateCheckTime()">🔄 確認を更新</button>
+        </div>
+        <!-- 確認済みフラッシュ -->
+        <div id="checkFlash" style="display:none;margin-top:8px;padding:6px 10px;border-radius:6px;background:rgba(63,185,80,0.15);border:1px solid rgba(63,185,80,0.4);font-size:12px;font-weight:700;color:var(--green);text-align:center;"></div>
+      </div>
+
+      <!-- ひろゆき提案追加: 確認履歴パネル -->
+      <div class="card" id="historyPanel" style="padding:14px 16px;">
+        <div class="section-header" style="margin-bottom:8px;">
+          <div class="section-title"><span>🕐</span> 確認履歴</div>
+          <div style="font-size:10px;color:var(--text-secondary);">直近5件</div>
+        </div>
+        <div id="historyList" style="font-size:12px;">
+          <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px 0;">確認を更新するとここに記録されます</div>
+        </div>
+      </div>
+
+      <!-- SYSTEM PERSONNEL -->
+      <div class="personnel-card">
+        <div class="section-header" style="margin-bottom:10px;">
+          <div class="section-title"><span>👥</span> システム部門 担当者</div>
+        </div>
+
+        <div class="personnel-item">
+          <div class="avatar av-blue">ひ</div>
+          <div class="personnel-info">
+            <div class="personnel-name">ひろゆき</div>
+            <div class="personnel-role">システム部門 / 自動化リード</div>
+          </div>
+          <span class="online-tag">● ON</span>
+        </div>
+
+        <div class="personnel-item">
+          <div class="avatar av-purple">ふ</div>
+          <div class="personnel-info">
+            <div class="personnel-name">ふるたち</div>
+            <div class="personnel-role">オーナー / Ops マネージャー</div>
+          </div>
+          <span class="online-tag">● ON</span>
+        </div>
+
+        <div class="personnel-item">
+          <div class="avatar av-green" style="font-size:11px;">AI</div>
+          <div class="personnel-info">
+            <div class="personnel-name">Claude Agent</div>
+            <div class="personnel-role">自動化エンジン / 常時稼働</div>
+          </div>
+          <span class="online-tag">● 稼働</span>
+        </div>
+
+        <div class="personnel-item">
+          <div class="avatar av-cyan">GAS</div>
+          <div class="personnel-info">
+            <div class="personnel-name">GAS Script</div>
+            <div class="personnel-role">Google Apps Script 担当</div>
+          </div>
+          <span class="away-tag">⚠ 要設定</span>
+        </div>
+      </div>
+
+      <!-- SYSTEM HEALTH -->
+      <div class="card">
+        <div class="section-header" style="margin-bottom:10px;">
+          <div class="section-title"><span>💚</span> システムヘルス</div>
+        </div>
+
+        <div class="health-row">
+          <span class="health-name">Cowork スケジューラ</span>
+          <div class="health-right">
+            <span class="health-pct" style="color:var(--green)">100%</span>
+            <div class="mini-bar"><div class="mini-fill" style="width:100%"></div></div>
+          </div>
+        </div>
+        <div class="health-row">
+          <span class="health-name">Notion 連携</span>
+          <div class="health-right">
+            <span class="health-pct" style="color:var(--green)">99.8%</span>
+            <div class="mini-bar"><div class="mini-fill" style="width:99.8%"></div></div>
+          </div>
+        </div>
+        <div class="health-row">
+          <span class="health-name">Gmail 連携</span>
+          <div class="health-right">
+            <span class="health-pct" style="color:var(--green)">100%</span>
+            <div class="mini-bar"><div class="mini-fill" style="width:100%"></div></div>
+          </div>
+        </div>
+        <div class="health-row">
+          <span class="health-name">Google Calendar</span>
+          <div class="health-right">
+            <span class="health-pct" style="color:var(--green)">100%</span>
+            <div class="mini-bar"><div class="mini-fill" style="width:100%"></div></div>
+          </div>
+        </div>
+        <div class="health-row">
+          <span class="health-name">GAS スクリプト</span>
+          <div class="health-right">
+            <span class="health-pct" style="color:var(--yellow)">設定待</span>
+            <div class="mini-bar"><div class="mini-fill warn" style="width:40%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK STATS -->
+      <div class="card">
+        <div class="section-header" style="margin-bottom:10px;">
+          <div class="section-title"><span>📈</span> 今月の実績</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="text-align:center;padding:10px;background:var(--bg-card2);border-radius:8px;">
+            <div style="font-size:22px;font-weight:900;color:var(--green);" id="monthExec">743</div>
+            <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">今月の実行数</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg-card2);border-radius:8px;">
+            <div style="font-size:22px;font-weight:900;color:var(--blue);">98.9%</div>
+            <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">成功率</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg-card2);border-radius:8px;">
+            <div style="font-size:22px;font-weight:900;color:var(--purple);">28</div>
+            <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">稼働日数</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg-card2);border-radius:8px;">
+            <div style="font-size:22px;font-weight:900;color:var(--cyan);">0</div>
+            <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">障害件数</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div><!-- /content-grid -->
+</div><!-- /main -->
+
+<script>
+  // ── CLOCK ──
+  function updateClock() {
+    const now = new Date();
+    const jst = new Date(now.getTime() + (9 * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('topTime').textContent =
+      pad(jst.getHours()) + ':' + pad(jst.getMinutes()) + ' JST';
+    document.getElementById('topDate').textContent =
+      jst.getFullYear() + '/' + pad(jst.getMonth()+1) + '/' + pad(jst.getDate());
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── HELPERS ──
+  const pad = n => String(n).padStart(2,'0');
+  function getJST() {
+    const now = new Date();
+    return new Date(now.getTime() + (9*60*60*1000 - now.getTimezoneOffset()*60*1000));
+  }
+  function jstTimeStr(d) {
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  // ── LAST CHECK TIME ──
+  let lastCheckTimestamp = null;
+  let checkHistory = []; // 履歴配列
+
+  function updateCheckTime() {
+    const jst = getJST();
+    const timeStr = jstTimeStr(jst);
+    const checker = document.getElementById('checkerSelect').value;
+
+    // 確認者・時刻を更新
+    document.getElementById('lastChecker').textContent = checker;
+    document.getElementById('lastCheckTime').textContent = timeStr;
+    lastCheckTimestamp = Date.now();
+    updateElapsed();
+
+    // フラッシュ表示
+    const flash = document.getElementById('checkFlash');
+    flash.textContent = '✔ ' + checker + ' が ' + timeStr + ' に確認しました';
+    flash.style.display = 'block';
+    setTimeout(() => { flash.style.display = 'none'; }, 3000);
+
+    // アクティビティログへ追記
+    addLogEntry('🛡️ <strong>' + checker + '</strong> がシステム全確認完了 — ALL CLEAR', 'var(--blue)', timeStr);
+
+    // 確認履歴へ追加
+    addHistory(checker, timeStr);
+  }
+
+  function updateElapsed() {
+    if (!lastCheckTimestamp) return;
+    const elapsed = Math.floor((Date.now() - lastCheckTimestamp) / 1000);
+    let txt;
+    if (elapsed < 60) txt = elapsed + '秒前に確認済み ✔';
+    else if (elapsed < 3600) txt = Math.floor(elapsed/60) + '分前に確認済み ✔';
+    else txt = Math.floor(elapsed/3600) + '時間前に確認済み ⚠';
+    document.getElementById('lastCheckElapsed').textContent = '● ' + txt;
+    // 1時間超えたら警告色
+    const el = document.getElementById('lastCheckElapsed');
+    el.style.color = elapsed > 3600 ? 'var(--yellow)' : 'var(--green)';
+  }
+  setInterval(updateElapsed, 1000);
+  updateCheckTime(); // auto-set on load
+
+  // ── アクティビティログ（動的追記）──
+  function addLogEntry(html, color, timeStr) {
+    const container = document.getElementById('activityLogContainer');
+    if (!container) return;
+    const newItem = document.createElement('div');
+    newItem.className = 'log-item';
+    newItem.style.animation = 'fadeIn .4s ease';
+    newItem.innerHTML = `
+      <div class="log-dot" style="background:${color};box-shadow:0 0 5px ${color};"></div>
+      <div class="log-time">${timeStr}</div>
+      <div class="log-text">${html}</div>`;
+    container.insertBefore(newItem, container.firstChild);
+    // 最大8件まで
+    const items = container.querySelectorAll('.log-item');
+    if (items.length > 8) items[items.length-1].remove();
+  }
+
+  // ── 確認履歴パネル ──
+  function addHistory(checker, timeStr) {
+    checkHistory.unshift({ checker, timeStr, date: getJST() });
+    if (checkHistory.length > 5) checkHistory.pop();
+    renderHistory();
+  }
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (checkHistory.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px 0;">確認を更新するとここに記録されます</div>';
+      return;
+    }
+    list.innerHTML = checkHistory.map((h, i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:${i<checkHistory.length-1?'1px solid var(--border)':'none'};">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:6px;height:6px;border-radius:50%;background:${i===0?'var(--green)':'var(--text-muted)'};"></div>
+          <span style="font-size:12px;font-weight:${i===0?700:400};color:${i===0?'var(--text-primary)':'var(--text-secondary)'};">${h.checker}</span>
+        </div>
+        <span style="font-size:11px;color:var(--text-secondary);font-variant-numeric:tabular-nums;">${h.timeStr}</span>
+      </div>`).join('');
+  }
+
+  // ── LOG TIMES (初期表示) ──
+  function setLogTimes() {
+    const jst = getJST();
+    const h = jst.getHours(), m = jst.getMinutes();
+    const fmt = (dh, dm) => {
+      let mm = m - dm, hh = h - dh;
+      if (mm < 0) { mm += 60; hh -= 1; }
+      if (hh < 0) hh += 24;
+      return pad(hh) + ':' + pad(mm);
+    };
+    document.getElementById('log1time').textContent = fmt(0, 3);
+    document.getElementById('log2time').textContent = fmt(0, 8);
+    document.getElementById('log3time').textContent = fmt(0, 15);
+  }
+  setLogTimes();
+
+  // ── EXEC COUNTER (subtle live feel) ──
+  let execBase = 24;
+  setInterval(() => {
+    if (Math.random() < 0.05) {
+      execBase++;
+      document.getElementById('execCount').textContent = execBase;
+    }
+  }, 3000);
+
+  // ── GAS 期限カウントダウン ──
+  function updateGasDeadline() {
+    const deadline = new Date('2026-04-04T00:00:00+09:00');
+    const now = new Date();
+    const diff = deadline - now;
+    const days = Math.ceil(diff / (1000*60*60*24));
+    const el = document.getElementById('gasDeadlineLeft');
+    if (el) {
+      if (days > 0) {
+        el.textContent = '（あと' + days + '日）';
+        el.style.color = days <= 3 ? 'var(--red)' : 'var(--text-secondary)';
+      } else {
+        el.textContent = '（期限超過！）';
+        el.style.color = 'var(--red)';
+      }
+    }
+  }
+  updateGasDeadline();
+  setInterval(updateGasDeadline, 60000);
+
+  // ── MONTH EXEC COUNTER ──
+  let monthBase = 743;
+  setInterval(() => {
+    if (Math.random() < 0.03) {
+      monthBase++;
+      document.getElementById('monthExec').textContent = monthBase;
+    }
+  }, 5000);
+</script>
+</body>
+</html>
