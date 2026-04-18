@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"C:/Users/kfuru/.claude/hooks/style-rules.txt\" && cat \"C:/Users/kfuru/.claude/hooks/work-rules.txt\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "review",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"C:/Users/kfuru/.claude/hooks/review-rules.txt\""
+          }
+        ]
+      }
+    ]
+  }
+}
